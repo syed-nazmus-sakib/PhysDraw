@@ -23,7 +23,9 @@ from .mechanics.incline import Incline
 from .mechanics.pulley import Pulley
 from .mechanics.rope import Rope, connect
 from .style.theme import TEXTBOOK, Theme
+from .templates.atwood_machine import atwood_machine
 from .templates.inclined_block import inclined_block
+from .templates.inclined_pulley_system import inclined_pulley_system
 
 AppliedForce = Applied
 
@@ -59,6 +61,8 @@ __all__ = [
     "draw",
     "forces",
     "inclined_block",
+    "inclined_pulley_system",
+    "atwood_machine",
     "reset",
 ]
 
