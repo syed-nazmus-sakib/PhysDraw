@@ -65,11 +65,15 @@ class Block(SceneObject):
         rels = scene.relations_of(subject=self, kind=ON_SURFACE)
         if rels:
             rel = rels[0]
-            self._transform = place_on_surface(
+            transform = place_on_surface(
                 self.width, self.height, rel.target.surface_segment(), rel.t
             )
         else:
-            self._transform = Transform.translate(Vector(0.0, self.height / 2.0))
+            transform = Transform.translate(Vector(0.0, self.height / 2.0))
+        self._apply_transform(scene, transform)
+
+    def _apply_transform(self, scene: "Scene", transform: Transform) -> None:
+        self._transform = transform
         w2, h2 = self.width / 2.0, self.height / 2.0
         local = [
             Point(-w2, -h2),
@@ -134,3 +138,53 @@ class Block(SceneObject):
                 italic=True,
                 halign="middle",
             )
+
+
+class HangingBlock(Block):
+    """A block hanging from the vertical run of a rope over a pulley.
+
+    ``connect(...)`` binds it automatically; its top face is placed `drop`
+    units below the pulley's vertical tangent point.
+    """
+
+    kind = "block"
+    z = Block.z
+
+    def __init__(
+        self,
+        label: str = "",
+        *,
+        width: float = 1.05,
+        height: float = 0.95,
+        drop: float = 1.7,
+        **kwargs,
+    ) -> None:
+        super().__init__(label, width=width, height=height, **kwargs)
+        self.drop = drop
+        self._hang_pulley = None
+        self._hang_sign: int | None = None
+
+    def bind_pulley(self, pulley, side: str) -> "HangingBlock":
+        if side not in ("left", "right"):
+            raise ValueError("side must be 'left' or 'right'")
+        self._hang_pulley = pulley
+        self._hang_sign = 1 if side == "right" else -1
+        return self
+
+    def deps(self) -> list["SceneObject"]:
+        return [self._hang_pulley] if self._hang_pulley is not None else []
+
+    @property
+    def hanging_side(self) -> str | None:
+        if self._hang_sign is None:
+            return None
+        return "right" if self._hang_sign == 1 else "left"
+
+    def place(self, scene: "Scene") -> None:
+        if self._hang_pulley is None:
+            super().place(scene)
+            return
+        c = self._hang_pulley.anchor("center")
+        top_x = c.x + self._hang_sign * self._hang_pulley.radius
+        transform = Transform.translate(Vector(top_x, c.y - self.drop - self.height / 2.0))
+        self._apply_transform(scene, transform)
