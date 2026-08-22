@@ -16,6 +16,7 @@ class Theme:
     stroke_width: float = 0.075
     thin_stroke: float = 0.045
     force_stroke: float = 0.095
+    rope_stroke: float = 0.06
 
     font_family: str = "Georgia, 'Times New Roman', serif"
     font_size: float = 0.55

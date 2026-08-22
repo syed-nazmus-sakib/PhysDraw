@@ -247,12 +247,43 @@ class Applied(ForceVector):
         return "F"
 
 
+class Tension(ForceVector):
+    """Rope tension on a body: along the rope, away from it.
+
+    The direction is inferred from context — up-slope for a body resting on a
+    surface, straight up for a hanging block — unless given explicitly.
+    """
+
+    def __init__(self, body: SceneObject, *, direction: DirectionSpec | None = None, **kwargs) -> None:
+        if direction is None:
+            direction = self._infer_direction(body)
+        kwargs.setdefault("scale", 0.8)
+        super().__init__(body, direction=direction, **kwargs)
+
+    @staticmethod
+    def _infer_direction(body: SceneObject) -> str:
+        scene = getattr(body, "scene", None)
+        if scene is not None and scene.relations_of(subject=body, kind=ON_SURFACE):
+            return "up_slope"
+        from .block import HangingBlock
+
+        if isinstance(body, HangingBlock):
+            return "up"
+        raise ValueError(
+            f"cannot infer tension direction for '{body.id}'; pass direction= explicitly"
+        )
+
+    def default_label(self) -> str:
+        return "T"
+
+
 def forces(
     body: SceneObject,
     *,
     weight: bool = True,
     normal: bool = True,
     friction: bool = False,
+    tension: bool = False,
 ) -> list[ForceVector]:
     """Attach the standard free-body-diagram forces to a body."""
     out: list[ForceVector] = []
@@ -262,6 +293,8 @@ def forces(
         out.append(Normal(body))
     if friction:
         out.append(Friction(body))
+    if tension:
+        out.append(Tension(body))
     return out
 
 
