@@ -37,12 +37,14 @@ class Block(SceneObject):
         width: float = 1.5,
         height: float = 1.0,
         show_label: bool | None = None,
+        label_offset: tuple[float, float] = (-0.35, 0.42),
         **kwargs,
     ) -> None:
         super().__init__(label=label if label else None, **kwargs)
         self.width = width
         self.height = height
         self.show_label = label != "" if show_label is None else show_label
+        self.label_offset = label_offset
         self._surface = None
         self._t: float = 0.5
         self._transform: Transform = Transform.identity()
@@ -122,6 +124,12 @@ class Block(SceneObject):
 
     # -- rendering --------------------------------------------------------
 
+    @property
+    def label_position(self) -> Point:
+        """World position of the mass label, nudged off the arrow axes."""
+        dx, dy = self.label_offset
+        return self._transform.apply_point(Point(dx * self.width, dy * self.height))
+
     def render(self, canvas: Canvas, theme) -> None:
         canvas.polygon(
             self._corners,
@@ -131,7 +139,7 @@ class Block(SceneObject):
         )
         if self.show_label and self.label:
             canvas.text(
-                self.anchor_point("center"),
+                self.label_position,
                 self.label,
                 size=theme.font_size,
                 color=theme.ink,
@@ -157,9 +165,10 @@ class HangingBlock(Block):
         width: float = 1.05,
         height: float = 0.95,
         drop: float = 1.7,
+        label_offset: tuple[float, float] = (-0.44, 0.04),
         **kwargs,
     ) -> None:
-        super().__init__(label, width=width, height=height, **kwargs)
+        super().__init__(label, width=width, height=height, label_offset=label_offset, **kwargs)
         self.drop = drop
         self._hang_pulley = None
         self._hang_sign: int | None = None

@@ -100,6 +100,7 @@ class ForceVector(SceneObject):
         lateral: float = 0.0,
         dash: tuple[float, ...] | None = None,
         color: str | None = None,
+        label_nudge: float = 0.0,
         name: str | None = None,
         scene=None,
     ) -> None:
@@ -112,6 +113,7 @@ class ForceVector(SceneObject):
         self.lateral = lateral
         self.dash = dash
         self.color = color
+        self.label_nudge = label_nudge
         self.label_text = label
         self._tail: Point | None = None
         self._dir: Vector | None = None
@@ -192,6 +194,8 @@ class ForceVector(SceneObject):
                 head_wid=theme.head_wid,
                 label_pad=theme.label_pad,
             )
+            if self.label_nudge:
+                pos = pos + self._dir.perpendicular() * self.label_nudge
             canvas.text(
                 pos,
                 label,
@@ -207,7 +211,13 @@ class Weight(ForceVector):
 
     def __init__(self, body: SceneObject, **kwargs) -> None:
         kwargs.setdefault("direction", "down")
-        kwargs.setdefault("scale", 0.85)
+        from .block import HangingBlock
+
+        if isinstance(body, HangingBlock):
+            # shorter so the label stays clear of the ground below
+            kwargs.setdefault("scale", 0.62)
+        else:
+            kwargs.setdefault("scale", 0.85)
         super().__init__(body, **kwargs)
 
     def default_label(self) -> str:
@@ -233,7 +243,9 @@ class Friction(ForceVector):
     def __init__(self, body: SceneObject, **kwargs) -> None:
         kwargs.setdefault("direction", "up_slope")
         kwargs.setdefault("at", "bottom")
-        kwargs.setdefault("lateral", 0.06)
+        kwargs.setdefault("lateral", 0.1)
+        kwargs.setdefault("scale", 0.78)
+        kwargs.setdefault("label_nudge", -0.3)
         super().__init__(body, **kwargs)
 
     def default_label(self) -> str:
@@ -272,6 +284,17 @@ class Tension(ForceVector):
         raise ValueError(
             f"cannot infer tension direction for '{body.id}'; pass direction= explicitly"
         )
+
+    def place(self, scene: "Scene") -> None:
+        scene_rel = scene.relations_of(subject=self.body, kind=ON_SURFACE)
+        if scene_rel and self.at_spec is None:
+            # slope case: keep the label clear of the rope running to the pulley
+            self.label_nudge = -0.35
+            self.scale = 0.85
+        elif not scene_rel and self.at_spec is None:
+            # hanging case: the rope meets the top face, so pull from there
+            self.at_spec = "top"
+        super().place(scene)
 
     def default_label(self) -> str:
         return "T"
