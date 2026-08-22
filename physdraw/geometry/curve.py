@@ -63,3 +63,17 @@ class Arc:
             start_deg=math.degrees(a0),
             sweep_deg=math.degrees(sweep),
         )
+
+
+def external_tangents(point: Point, center: Point, radius: float) -> tuple[Point, Point]:
+    """The two points where tangent lines from an external point touch a circle."""
+    d = point - center
+    dist = d.length
+    if dist <= radius:
+        raise ValueError("point must lie strictly outside the circle")
+    phi = math.degrees(math.atan2(d.y, d.x))
+    beta = math.degrees(math.acos(radius / dist))
+    return (
+        center + Vector.from_polar(phi + beta, radius),
+        center + Vector.from_polar(phi - beta, radius),
+    )

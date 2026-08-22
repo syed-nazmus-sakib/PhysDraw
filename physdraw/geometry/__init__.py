@@ -1,5 +1,5 @@
 from .boundingbox import BoundingBox
-from .curve import Arc
+from .curve import Arc, external_tangents
 from .line import Line, Ray, Segment, angle_between, line_line_intersection, segments_intersect
 from .point import ORIGIN, Point
 from .transform import Transform
@@ -18,6 +18,7 @@ __all__ = [
     "Transform",
     "Vector",
     "angle_between",
+    "external_tangents",
     "line_line_intersection",
     "segments_intersect",
 ]
