@@ -63,7 +63,7 @@ class Pulley(SceneObject):
         if self.at_spec is not None:
             self._center = resolve_ref(self.at_spec)
         elif self._mount_ref is not None:
-            body, surface = self._mount_ref
+            _body, surface = self._mount_ref
             seg = surface.surface_segment()
             apex = (
                 surface.anchor("apex")

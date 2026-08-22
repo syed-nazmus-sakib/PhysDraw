@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from types import SimpleNamespace
 
 from physdraw import (
     Block,
@@ -8,15 +9,14 @@ from physdraw import (
     Incline,
     Normal,
     Pulley,
-    Rope,
     Scene,
     Tension,
+    Vector,
     Weight,
     atwood_machine,
     connect,
     inclined_pulley_system,
 )
-from physdraw.geometry import Vector
 
 
 def _arc_contains(arc_start: float, sweep: float, target: float = 90.0) -> bool:
@@ -25,7 +25,7 @@ def _arc_contains(arc_start: float, sweep: float, target: float = 90.0) -> bool:
     return ((arc_start - target) % 360.0) <= -sweep + 1e-9
 
 
-def _incline_pulley_scene():
+def _incline_pulley_scene() -> SimpleNamespace:
     with Scene() as s:
         plane = Incline(30)
         a = Block("m1").on(plane)
@@ -37,61 +37,61 @@ def _incline_pulley_scene():
         Tension(a)
         Weight(b)
         Tension(b)
-    return s.resolve(), plane, a, b, pulley, rope
+    return SimpleNamespace(
+        scene=s.resolve(), plane=plane, slope_block=a, hang_block=b, pulley=pulley, rope=rope
+    )
 
 
 def test_rope_is_tangent_to_pulley():
-    s, plane, a, b, pulley, rope = _incline_pulley_scene()
-    c = pulley.anchor("center")
-    t_in = rope.anchor("over_start")
-    p = rope.anchor("start")
-    assert abs((t_in - c).length - pulley.radius) < 1e-9
+    fx = _incline_pulley_scene()
+    c = fx.pulley.anchor("center")
+    t_in = fx.rope.anchor("over_start")
+    p = fx.rope.anchor("start")
+    assert abs((t_in - c).length - fx.pulley.radius) < 1e-9
     assert abs((t_in - c).dot(t_in - p)) < 1e-9
 
 
 def test_wrap_arc_passes_over_top():
-    s, plane, a, b, pulley, rope = _incline_pulley_scene()
-    start, sweep = rope.arc_params
+    fx = _incline_pulley_scene()
+    start, sweep = fx.rope.arc_params
     assert _arc_contains(start, sweep)
 
 
 def test_hanging_block_hangs_from_vertical_run():
-    s, plane, a, b, pulley, rope = _incline_pulley_scene()
-    top = b.anchor("top")
-    exit_pt = rope.anchor("over_end")
-    c = pulley.anchor("center")
+    fx = _incline_pulley_scene()
+    top = fx.hang_block.anchor("top")
+    exit_pt = fx.rope.anchor("over_end")
+    c = fx.pulley.anchor("center")
     assert abs(top.x - exit_pt.x) < 1e-9
     assert top.y < exit_pt.y
     assert abs(exit_pt.y - c.y) < 1e-9
-    side = "right"
-    expected_x = c.x + (1 if side == "right" else -1) * pulley.radius
-    assert b.hanging_side == side
-    assert abs(top.x - expected_x) < 1e-9
+    assert fx.hang_block.hanging_side == "right"
+    assert abs(top.x - (c.x + fx.pulley.radius)) < 1e-9
 
 
 def test_tension_directions():
-    s, plane, a, b, pulley, rope = _incline_pulley_scene()
-    seg = plane.surface_segment()
-    t_slope = next(o for o in s if isinstance(o, Tension) and o.body is a)
+    fx = _incline_pulley_scene()
+    seg = fx.plane.surface_segment()
+    t_slope = next(o for o in fx.scene if isinstance(o, Tension) and o.body is fx.slope_block)
     d = (t_slope.tip_point - t_slope.tail_point).normalized()
     assert d.approx(seg.unit, tol=1e-9)
 
-    t_hang = next(o for o in s if isinstance(o, Tension) and o.body is b)
+    t_hang = next(o for o in fx.scene if isinstance(o, Tension) and o.body is fx.hang_block)
     dh = (t_hang.tip_point - t_hang.tail_point).normalized()
     assert dh.approx(Vector(0.0, 1.0))
 
 
 def test_normal_still_perpendicular_with_system():
-    s, plane, a, b, pulley, rope = _incline_pulley_scene()
-    n = next(o for o in s if isinstance(o, Normal))
-    seg = plane.surface_segment()
+    fx = _incline_pulley_scene()
+    n = next(o for o in fx.scene if isinstance(o, Normal))
+    seg = fx.plane.surface_segment()
     assert abs((n.tip_point - n.tail_point).dot(seg.unit)) < 1e-9
 
 
 def test_incline_pulley_renders_grouped():
     svg = inclined_pulley_system(45).to_svg()
-    ET.fromstring(svg)
-    ids = [g.get("id") for g in ET.fromstring(svg).iter() if g.tag.endswith("g")]
+    root = ET.fromstring(svg)
+    ids = [g.get("id") for g in root.iter() if g.tag.endswith("g")]
     kinds = {i.split("-")[0] for i in ids if i}
     assert {"incline", "block", "pulley", "rope", "force"} <= kinds
 
@@ -112,5 +112,13 @@ def test_atwood_machine_symmetry():
 
 
 def test_atwood_renders():
-    svg = atwood_machine().to_svg()
+    ET.fromstring(atwood_machine().to_svg())
+
+
+def test_straight_rope_without_pulley():
+    with Scene() as s:
+        a = Block("a").on(Incline(30))
+        b = Block("b")
+        connect(a, b)
+    svg = s.to_svg()
     ET.fromstring(svg)

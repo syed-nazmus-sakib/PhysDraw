@@ -56,13 +56,13 @@ __all__ = [
     "Transform",
     "Vector",
     "Weight",
+    "atwood_machine",
     "connect",
     "current_scene",
     "draw",
     "forces",
     "inclined_block",
     "inclined_pulley_system",
-    "atwood_machine",
     "reset",
 ]
 

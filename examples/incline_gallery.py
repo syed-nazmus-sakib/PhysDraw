@@ -1,4 +1,4 @@
-"""Generates the v0.1 gallery: every variant the inclined-block recipe must support."""
+"""Generates the gallery: every supported figure family at a glance."""
 
 from __future__ import annotations
 
@@ -14,7 +14,9 @@ from physdraw import (
     Scene,
     Vector,
     Weight,
+    atwood_machine,
     inclined_block,
+    inclined_pulley_system,
 )
 
 OUT = os.path.join(os.path.dirname(__file__), "out")
@@ -28,6 +30,9 @@ def gallery() -> list[tuple[str, object]]:
         ("no_friction", inclined_block(30, friction=False)),
         ("applied_up_slope", inclined_block(30, applied="up_slope")),
         ("with_acceleration", inclined_block(30, applied="up_slope", acceleration=True)),
+        ("incline_pulley_30", inclined_pulley_system(30)),
+        ("incline_pulley_friction", inclined_pulley_system(45, friction=True)),
+        ("atwood_machine", atwood_machine()),
     ]
 
     compositional = Scene()

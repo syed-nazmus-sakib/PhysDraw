@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from ..core.object import SceneObject
-from ..core.relations import ON_SURFACE, CONNECTED_TO, ConnectedTo
+from ..core.relations import CONNECTED_TO, ON_SURFACE, ConnectedTo
 from ..geometry import Point, external_tangents
 from ..render.canvas import ArcSeg, Canvas
-from .block import HangingBlock
+from .block import Block, HangingBlock
 
 
 def _on_surface(scene, obj) -> bool:
@@ -65,7 +65,9 @@ class Rope(SceneObject):
             rel = scene.relations_of(subject=body, kind=ON_SURFACE)[0]
             face = "left" if getattr(rel.target, "flip", False) else "right"
             return body.anchor(face)
-        return body.anchor("top")
+        if isinstance(body, HangingBlock):
+            return body.anchor("top")
+        return body.anchor("center")
 
     def _choose_tangent(self, p: Point, c: Point, r: float, exit_deg: float) -> tuple[Point, float]:
         """Pick the external tangent whose wrap reaches `exit_deg` over the top."""
@@ -96,18 +98,17 @@ class Rope(SceneObject):
     def place(self, scene) -> None:
         role_a, role_b = self._roles(scene)
 
-        if len([r for r in (role_a, role_b) if r == "surface"]) == 2 and self.via is not None:
-            raise NotImplementedError("belt between two supported bodies is not supported yet")
-        if role_a != "surface" and role_b != "surface":
-            for e in (self.a, self.b):
-                if not isinstance(e, HangingBlock):
+        if self.via is not None:
+            surface_roles = [r for r in (role_a, role_b) if r == "surface"]
+            if len(surface_roles) == 2:
+                raise NotImplementedError(
+                    "belt between two supported bodies is not supported yet"
+                )
+            for role, e in ((role_a, self.a), (role_b, self.b)):
+                if role != "surface" and not isinstance(e, HangingBlock):
                     raise ValueError(
                         f"free endpoint '{e.id}' must be a HangingBlock when using a pulley"
                     )
-        elif role_a != "surface" and not isinstance(self.a, HangingBlock):
-            raise ValueError(f"free endpoint '{self.a.id}' must be a HangingBlock")
-        elif role_b != "surface" and not isinstance(self.b, HangingBlock):
-            raise ValueError(f"free endpoint '{self.b.id}' must be a HangingBlock")
 
         pa = self._attach_point(scene, self.a, role_a)
         pb = self._attach_point(scene, self.b, role_b)
@@ -210,7 +211,9 @@ def connect(a: Block, b: Block, *, via=None, name: str | None = None) -> Rope:
             if isinstance(e, HangingBlock):
                 e.bind_pulley(via, side)
     elif via is not None:
-        for e, side in zip(free_ends, ("left", "right")):
+        default_sides = ("left", "right")
+        for i, e in enumerate(free_ends):
+            side = default_sides[i] if i < len(default_sides) else "right"
             if isinstance(e, HangingBlock):
                 e.bind_pulley(via, side)
     return rope
